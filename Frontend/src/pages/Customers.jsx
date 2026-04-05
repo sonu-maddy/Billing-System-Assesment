@@ -14,7 +14,6 @@ export default function Customers() {
   return (
     <div className="p-6">
 
-      {/* HEADER */}
       <div className="flex justify-between mb-4">
         <h2 className="text-xl font-semibold">CUSTOMERS</h2>
 
@@ -26,7 +25,8 @@ export default function Customers() {
         </button>
       </div>
 
-      {/* CUSTOMER CARDS */}
+      <hr className="mb-4" />
+
       <div className="grid grid-cols-3 gap-4">
         {customers.map(c => (
           <div key={c.id} className="bg-white shadow rounded-xl p-4">

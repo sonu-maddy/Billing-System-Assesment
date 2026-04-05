@@ -34,7 +34,9 @@ export default function Items() {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <hr className="border-black"/>
+
+        <div className="grid grid-cols-3 mt-10 gap-4">
           {items.map(item => (
             <div key={item.id} className="bg-white shadow rounded-xl p-4">
               <h4 className="font-semibold">{item.name}</h4>

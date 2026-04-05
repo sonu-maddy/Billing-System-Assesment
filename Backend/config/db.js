@@ -1,0 +1,13 @@
+import {Pool} from "pg";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+
+export const pool = new Pool({
+  user: "postgres",
+  host: "localhost",
+  database: "LogiEdge Billing System",
+  password: "sonu@12345",
+  port: 5432,
+});
