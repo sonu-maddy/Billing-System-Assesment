@@ -1,235 +1,402 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { IoMdAddCircle } from "react-icons/io";
+import { useNavigate } from "react-router-dom";
+
 
 export default function Billing() {
-    const [step, setStep] = useState(1);
+
     const [customers, setCustomers] = useState([]);
     const [items, setItems] = useState([]);
 
+
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [selectedItems, setSelectedItems] = useState([]);
+
+    const [showCustomerModal, setShowCustomerModal] = useState(false);
+    const [showItemModal, setShowItemModal] = useState(false);
+
+    const [showInvoice, setShowInvoice] = useState(false);
+    const [invoiceData, setInvoiceData] = useState(null);
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         axios.get("http://localhost:5000/customers").then(res => setCustomers(res.data));
         axios.get("http://localhost:5000/items").then(res => setItems(res.data));
     }, []);
 
-    // Add item
+    
     const addItem = (item) => {
-        const exists = selectedItems.find(i => i.id === item.id);
+        setSelectedItems(prev => {
+            const exists = prev.find(i => i.id === item.id);
 
-        if (exists) {
-            setSelectedItems(selectedItems.map(i =>
-                i.id === item.id ? { ...i, qty: i.qty + 1 } : i
-            ));
-        } else {
-            setSelectedItems([...selectedItems, { ...item, qty: 1 }]);
-        }
+            if (exists) {
+                return prev.map(i =>
+                    i.id === item.id ? { ...i, qty: i.qty + 1 } : i
+                );
+            } else {
+                return [...prev, { ...item, qty: 1 }];
+            }
+        });
     };
 
-    // Remove item
-    const removeItem = (item) => {
-        const exists = selectedItems.find(i => i.id === item.id);
-        if (!exists) return;
-
-        if (exists.qty === 1) {
-            setSelectedItems(selectedItems.filter(i => i.id !== item.id));
-        } else {
-            setSelectedItems(selectedItems.map(i =>
-                i.id === item.id ? { ...i, qty: i.qty - 1 } : i
-            ));
-        }
+   
+    const removeItem = (id) => {
+        setSelectedItems(prev =>
+            prev
+                .map(i =>
+                    i.id === id ? { ...i, qty: i.qty - 1 } : i
+                )
+                .filter(i => i.qty > 0)
+        );
     };
 
-    // Calculations
-    const total = selectedItems.reduce((sum, i) => sum + i.price * i.qty, 0);
+  
+    const total = selectedItems.reduce(
+        (sum, item) => sum + item.price * item.qty,
+        0
+    );
+
     const gst = selectedCustomer?.is_gst_registered ? 0 : total * 0.18;
     const finalTotal = total + gst;
 
-    // Invoice ID Generator
-    const generateInvoiceId = () => {
-        return "INVC" + Math.floor(100000 + Math.random() * 900000);
+    const createInvoice = async () => {
+        const invoiceDataTemp = {
+            customer: selectedCustomer,
+            items: selectedItems,
+            total,
+            gst,
+            finalTotal
+        };
+
+        await axios.post("http://localhost:5000/invoices", {
+            customer_id: selectedCustomer.id,
+            items: selectedItems.map(i => ({
+                item_id: i.id,
+                qty: i.qty
+            })),
+            total,
+            gst,
+            final_total: finalTotal
+        });
+
+        setInvoiceData(invoiceDataTemp); 
+
+        setSelectedItems([]);
+        setCustomers([]);
+        setSelectedCustomer(null);
+
+        setShowInvoice(true);
     };
 
-    const [invoiceId, setInvoiceId] = useState("");
+
+
 
     return (
-        <div className="p-6">
 
-            <h2 className="text-2xl font-semibold mb-6">Billing </h2>
-            <hr className="border-black" />
-            <div className="flex justify-center items-center bg-gray-100 p-8">
+        <div>
+            <div>
+                <h2 className="text-xl font-semibold mb-6">Billing</h2>
+                <hr className="border-black" />
 
-                <div className="bg-white w-full max-w-5xl p-8 rounded-xl shadow">
+            </div>
+
+            {!showInvoice && (
+                <div className="bg-gray-100 min-h-screen p-8 flex justify-center">
 
 
 
-                    {/* STEP 1 */}
-                    {step === 1 && (
-                        <div className="text-center p-8 w-full">
-                            <h3 className="text-lg font-semibold mb-6 border-b pb-2">
-                                Customer Details
-                            </h3>
+                    <div className="bg-white w-full max-w-5xl p-8 rounded-xl shadow">
 
-                            <div className="flex justify-center items-center h-[200px]">
-                                <button
-                                    onClick={() => setStep(2)}
-                                    className="bg-blue-700 text-white px-6 py-2 rounded shadow"
-                                >
-                                    + ADD
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                       
 
-                    {/* STEP 2 */}
-                    {step === 2 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-                                Select Customer
-                            </h3>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {customers.map(c => (
-                                    <div
-                                        key={c.id}
-                                        onClick={() => {
-                                            setSelectedCustomer(c);
-                                            setStep(3);
-                                        }}
-                                        className="p-4 border rounded cursor-pointer hover:shadow"
+
+                        <div className="border-b pb-4 mb-6">
+
+                            <h3 className="font-semibold mb-3 text-xl">Customer Details</h3>
+                            <hr /><hr /><hr />
+
+
+                            {!selectedCustomer && (
+                                <div className="flex justify-center items-center h-[150px]">
+                                    <button
+                                        onClick={() => setShowCustomerModal(true)}
+                                        className="flex items-center gap-2  text-black px-6 py-2 rounded shadow hover:bg-gray-50 transition"
                                     >
-                                        <h4 className="font-semibold">{c.name}</h4>
-                                        <span className="text-xs text-green-600">Active</span>
+                                        <IoMdAddCircle className="text-lg " />
+                                        Add
+                                    </button>
+                                </div>
+                            )}
+
+
+                            {selectedCustomer && (
+                                <div className="mt-3 text-sm space-y-1">
+                                    <p><b>Name :</b> {selectedCustomer.name}</p>
+                                    <p><b>Address :</b> {selectedCustomer.address}</p>
+                                    <p><b>Pan Card :</b> {selectedCustomer.pan}</p>
+                                    <p><b>GST :</b> {selectedCustomer.gstin}</p>
+                                </div>
+                            )}
+
+                        </div>
+
+
+
+
+                        <div className="border-b pb-4 mb-6">
+
+                            <h3 className="font-semibold mb-3 text-xl">Items</h3>
+                            <hr /><hr /><hr />
+
+                    
+                            {selectedItems.length === 0 && (
+                                <div className="flex justify-center items-center h-[150px]">
+                                    <button
+                                        onClick={() => setShowItemModal(true)}
+                                        className="flex items-center gap-2  text-black px-6 py-2 rounded shadow hover:bg-gray-50 transition"
+                                    >
+                                        <IoMdAddCircle /> Item
+                                    </button>
+                                </div>
+                            )}
+
+                     
+                            {selectedItems.length > 0 && (
+                                <>
+
+
+                      
+                                    <div className="grid grid-cols-3 mt-5 font-semibold text-sm mb-2">
+                                        <span className="font-bold">Name</span>
+                                        <span className="text-center font-bold">Qty</span>
+                                        <span className="text-right font-bold">Amount</span>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
-                    {/* STEP 3 */}
-                    {step === 3 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-                                Customer Details
-                            </h3>
+                          
+                                    {selectedItems.map(i => (
+                                        <div key={i.id} className="grid grid-cols-3 items-center py-2">
 
-                            <p><b>Name:</b> {selectedCustomer.name}</p>
-                            <p><b>Email:</b> {selectedCustomer.email}</p>
+                                            <span>{i.name}</span>
 
-                            <button
-                                onClick={() => setStep(4)}
-                                className="mt-4 bg-blue-700 text-white px-4 py-2 rounded"
-                            >
-                                Next → Add Items
-                            </button>
-                        </div>
-                    )}
+                                            <div className="flex justify-center items-center gap-2">
+                                                <button onClick={() => removeItem(i.id)} className="border px-2">-</button>
+                                                <span>{i.qty}</span>
+                                                <button onClick={() => addItem(i)} className="border px-2">+</button>
+                                            </div>
 
-                    {/* STEP 4 */}
-                    {step === 4 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-                                Select Items
-                            </h3>
+                                            <span className="text-right">₹ {i.price * i.qty}</span>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {items.map(item => (
-                                    <div key={item.id} className="p-4 border rounded">
-                                        <h4 className="font-semibold">{item.name}</h4>
-                                        <p>₹ {item.price}</p>
+                                        </div>
+                                    ))}
 
-                                        <div className="flex gap-2 mt-2">
-                                            <button
-                                                onClick={() => removeItem(item)}
-                                                className="px-2 border"
-                                            >-</button>
-
-                                            <button
-                                                onClick={() => addItem(item)}
-                                                className="px-2 border"
-                                            >+</button>
+                             
+                                    <div className="flex justify-end mt-6 border-t pt-4">
+                                        <div className="text-right">
+                                            <p>Total: ₹ {total}</p>
+                                            <p>GST: ₹ {gst}</p>
+                                            <h3 className="font-bold text-lg">₹ {finalTotal}</h3>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </>
+                            )}
 
-                            <button
-                                onClick={() => setStep(5)}
-                                className="mt-6 bg-blue-700 text-white px-4 py-2 rounded"
-                            >
-                                Next → Summary
+                        </div>
+
+
+
+                 
+                        <div className="flex justify-end gap-4">
+                            <button className="border border-red-500 text-red-500 px-4 py-2 rounded">
+                                Cancel
                             </button>
+
+                            <button className="bg-blue-800 text-white px-4 py-2 rounded"
+                                onClick={createInvoice}>
+                                Create
+                            </button>
+                        </div>
+
+                    </div>
+
+                    {showCustomerModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
+
+                            <div className="bg-white w-full max-w-4xl p-8 rounded-xl shadow-lg">
+
+                              
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-semibold">Select Customer</h2>
+
+                                    <button
+                                        onClick={() => setShowCustomerModal(false)}
+                                        className="border border-red-500 text-red-500 px-4 py-1 rounded"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+
+                           
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                                    {customers.map(c => (
+                                        <div
+                                            key={c.id}
+                                            onClick={() => {
+                                                setSelectedCustomer(c);
+                                                setShowCustomerModal(false);
+                                            }}
+                                            className="p-5 border rounded-xl cursor-pointer 
+                       shadow-sm hover:shadow-md transition bg-gray-50"
+                                        >
+
+                                          
+                                            <h3 className="font-semibold text-gray-800 text-lg">
+                                                {c.name}
+                                            </h3>
+
+                                            <div className="mt-3">
+                                                <span
+                                                    className={`text-xs px-3 py-1 rounded font-medium
+                ${c.is_gst_registered
+                                                            ? "bg-green-100 text-green-600"
+                                                            : "bg-red-100 text-red-600"
+                                                        }`}
+                                                >
+                                                    {c.is_gst_registered ? "Active" : "In-Active"}
+                                                </span>
+                                            </div>
+
+                                        </div>
+                                    ))}
+
+                                </div>
+
+                            </div>
                         </div>
                     )}
 
-                    {/* STEP 5 */}
-                    {step === 5 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-                                Summary
-                            </h3>
+                    {showItemModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
 
-                            <p><b>Name:</b> {selectedCustomer.name}</p>
+                            <div className="bg-white p-6 rounded w-[400px]">
 
-                            <div className="mt-4">
-                                {selectedItems.map(i => (
-                                    <div key={i.id} className="flex justify-between">
-                                        <span>{i.name} (x{i.qty})</span>
-                                        <span>₹ {i.price * i.qty}</span>
+                                <h3 className="mb-4 font-semibold">Select Item</h3>
+
+                                {items.map(item => (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => {
+                                            addItem(item);
+                                            setShowItemModal(false);
+                                        }}
+                                        className="p-2 border mb-2 cursor-pointer hover:bg-gray-100"
+                                    >
+                                        {item.name} - ₹ {item.price}
                                     </div>
                                 ))}
+
+                                <button
+                                    onClick={() => setShowItemModal(false)}
+                                    className="mt-3 border border-red-600 text-red-600 px-3 py-1 rounded"
+                                >
+                                    Close
+                                </button>
+
                             </div>
-
-                            <hr className="my-4" />
-
-                            <p>Total: ₹ {total}</p>
-                            <p>GST: ₹ {gst}</p>
-                            <h4 className="font-bold">Final: ₹ {finalTotal}</h4>
-
-                            <button
-                                onClick={() => {
-                                    setInvoiceId(generateInvoiceId());
-                                    setStep(6);
-                                }}
-                                className="mt-4 bg-green-600 text-white px-4 py-2 rounded"
-                            >
-                                Generate Invoice
-                            </button>
-                        </div>
-                    )}
-
-                    {/* STEP 6 - FINAL INVOICE */}
-                    {step === 6 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-                                Generated Invoice
-                            </h3>
-
-                            <p className="text-right mb-4">
-                                <b>Invoice ID:</b> {invoiceId}
-                            </p>
-
-                            <p><b>Name:</b> {selectedCustomer.name}</p>
-
-                            <div className="mt-4">
-                                {selectedItems.map(i => (
-                                    <div key={i.id} className="flex justify-between">
-                                        <span>{i.name}</span>
-                                        <span>{i.qty}</span>
-                                        <span>₹ {i.price * i.qty}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <hr className="my-4" />
-
-                            <h4 className="font-bold">Final Total: ₹ {finalTotal}</h4>
                         </div>
                     )}
 
                 </div>
-            </div>
+            )}
+
+
+
+            {showInvoice && <div className="bg-gray-100 min-h-screen flex justify-center p-10">
+
+              
+                <div className="bg-white w-full max-w-4xl shadow rounded">
+
+                    
+                    <div className="bg-indigo-900 h-10 w-full rounded-t"></div>
+
+                    <div className="p-8">
+
+                      
+                        <h1 className="text-2xl font-semibold mb-6">Billing</h1>
+
+                      
+                        <div className="border rounded mb-6">
+
+                       
+                            <div className="flex justify-between items-center px-6 py-3 border-b bg-gray-50">
+                                <h2 className="font-semibold">Customer Details</h2>
+                                <p className="text-sm font-medium">
+                                    Invoice ID: <span className="font-bold">INVC224830</span>
+                                </p>
+                            </div>
+
+                        
+                            <div className="px-6 py-4 text-sm space-y-2">
+                                <p><span className="font-medium">Name</span> : {invoiceData?.customer.name}</p>
+                                <p><span className="font-medium">Address</span> : {invoiceData?.customer.address}</p>
+                                <p><span className="font-medium">Pan Card</span> : {invoiceData?.customer.pan}</p>
+                                <p><span className="font-medium">GST Num</span> : {invoiceData?.customer.gstin}</p>
+                            </div>
+
+                        </div>
+
+                     
+                        <div className="border rounded">
+
+                        
+                            <div className="px-6 py-3 border-b bg-gray-50 font-semibold">
+                                Items
+                            </div>
+
+                          
+                            <div className="grid grid-cols-3 px-6 py-3 text-sm font-semibold border-b">
+                                <span>Name</span>
+                                <span className="text-center">Qty</span>
+                                <span className="text-right">Amount</span>
+                            </div>
+
+                           
+                            {invoiceData?.items.map(i => (
+                                <div key={i.id} className="grid grid-cols-3 px-6 py-3 text-sm border-b">
+                                    <span>{i.name}</span>
+                                    <span className="text-center">{i.qty}</span>
+                                    <span className="text-right font-medium">
+                                        ₹ {i.price * i.qty}
+                                    </span>
+                                </div>
+                            ))}
+
+                          
+                            <div className="px-6 py-4 flex justify-end">
+                                <div className="text-right">
+                                    <p className="font-semibold">Total</p>
+                                    <p className="font-bold text-lg">₹ {invoiceData?.finalTotal}</p>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>}
+
+
+
         </div>
     );
 }
+
+
+
+
+
+
+

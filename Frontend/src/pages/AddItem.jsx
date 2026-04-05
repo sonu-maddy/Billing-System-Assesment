@@ -8,14 +8,16 @@ export default function AddItemForm() {
   const [form, setForm] = useState({
     name: "",
     price: "",
-    status: "Active"
+    status: ""
   });
 
   const handleSubmit = async () => {
     try {
+      
       await axios.post("http://localhost:5000/items", {
         name: form.name,
-        price: Number(form.price)
+        price: Number(form.price),
+        status: form.status
       });
 
       navigate("/items");
@@ -31,7 +33,7 @@ export default function AddItemForm() {
 
       <div className="grid grid-cols-2 gap-6">
 
-        {/* Item Name */}
+        
         <div>
           <label className="text-sm">Item Name</label>
           <input
@@ -40,7 +42,7 @@ export default function AddItemForm() {
           />
         </div>
 
-        {/* Price */}
+       
         <div>
           <label className="text-sm">Customer Selling Price</label>
           <input
@@ -50,21 +52,21 @@ export default function AddItemForm() {
           />
         </div>
 
-        {/* Status */}
+        
         <div>
           <label className="text-sm">Customer Status</label>
           <select
             className="w-full border rounded px-3 py-2"
             onChange={e => setForm({ ...form, status: e.target.value })}
           >
-            <option>Active</option>
-            <option>In-Active</option>
+            <option value="Active">Active</option>
+            <option value="In-Active">In-Active</option>
           </select>
         </div>
 
       </div>
 
-      {/* Buttons */}
+
       <div className="flex justify-center gap-4 mt-8">
 
         <button

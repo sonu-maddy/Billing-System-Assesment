@@ -1,24 +1,13 @@
 import express from "express";
-import { pool } from "../config/db.js";
+import { getAllItems, createItem } from "../controllers/item.controller.js";
+
 
 const router = express.Router();
 
-// GET all items
-router.get("/", async (req, res) => {
-  const data = await pool.query("SELECT * FROM items ORDER BY id DESC");
-  res.json(data.rows);
-});
 
-// CREATE item
-router.post("/", async (req, res) => {
-  const { name, price } = req.body;
+router.get("/", getAllItems);
 
-  await pool.query(
-    "INSERT INTO items (name, price) VALUES ($1,$2)",
-    [name, price]
-  );
 
-  res.json({ message: "Item added successfully" });
-});
+router.post("/", createItem );
 
 export default router;

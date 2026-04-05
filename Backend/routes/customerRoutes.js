@@ -1,26 +1,13 @@
 import express from "express";
-import { pool } from "../config/db.js";
+import { getAllCustomers , createCustomer
+} from "../controllers/customer.controller.js";
 
 const router = express.Router();
 
-// GET all customers
-router.get("/", async (req, res) => {
-  const data = await pool.query("SELECT * FROM customers ORDER BY id DESC");
-  res.json(data.rows);
-});
 
-// CREATE customer
-router.post("/", async (req, res) => {
-  const { name, address, pan, gst, is_gst_registered } = req.body;
+router.get("/", getAllCustomers);
 
-  await pool.query(
-    `INSERT INTO customers 
-    (name, address, pan, gst, is_gst_registered) 
-    VALUES ($1,$2,$3,$4,$5)`,
-    [name, address, pan, gst, is_gst_registered]
-  );
 
-  res.json({ message: "Customer added successfully" });
-});
+router.post("/", createCustomer);
 
 export default router;
